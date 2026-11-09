@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>午餐時間提醒看板</title>
+  <style>
+    :root { color-scheme: light; --ink:#23344b; --muted:#62738b; --line:#dce6f1; --blue:#3576c7; --bg:#eef4fa; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Microsoft JhengHei","Noto Sans TC",Arial,sans-serif; background:var(--bg); color:var(--ink); }
+    .dashboard { min-height:100vh; display:grid; grid-template-columns:minmax(280px, 28%) minmax(0, 1fr); gap:20px; padding:22px; }
+    .panel { background:#fff; border-radius:22px; box-shadow:0 8px 28px rgba(37,72,116,.08); }
+    .tasks { padding:26px; display:flex; flex-direction:column; min-height:0; }
+    h1 { margin:0 0 8px; font-size:clamp(26px,2.5vw,36px); }
+    .subtitle { color:var(--muted); font-size:16px; margin:0 0 26px; }
+    .task-entry { display:flex; gap:8px; }
+    #taskInput { flex:1; min-width:0; border:2px solid var(--line); border-radius:12px; padding:14px 12px; font-size:17px; outline:none; }
+    #taskInput:focus { border-color:var(--blue); }
+    button { border:0; border-radius:12px; cursor:pointer; font-family:inherit; font-size:16px; font-weight:700; }
+    .add { padding:0 19px; background:var(--blue); color:#fff; }
+    .task-list { list-style:none; padding:0; margin:22px 0; overflow-y:auto; flex:1; }
+    .task-list li { display:flex; align-items:center; gap:12px; padding:14px 2px; border-bottom:1px solid #e9eef4; font-size:19px; overflow-wrap:anywhere; }
+    .task-list input { width:21px; height:21px; flex-shrink:0; accent-color:var(--blue); }
+    .task-text { flex:1; }
+    .completed .task-text { text-decoration:line-through; color:#9aa7b7; }
+    .delete { flex-shrink:0; padding:7px 11px; background:#fff0f0; color:#bc4545; }
+    .clear { background:#edf1f6; color:#495b72; padding:13px 20px; align-self:stretch; }
+    .main { display:flex; flex-direction:column; gap:20px; min-width:0; }
+    .topbar { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    .stat { padding:22px 26px; text-align:center; }
+    .stat-label { color:var(--muted); font-weight:700; font-size:21px; margin-bottom:10px; }
+    .stat-number { font-size:clamp(40px,5vw,76px); font-weight:800; letter-spacing:1px; font-variant-numeric:tabular-nums; line-height:1.2; }
+    .timer-number { color:#e27640; }
+    .timer-end { color:#d04444; font-size:clamp(24px,3vw,42px); }
+    .video-card { flex:1; padding:18px; display:flex; flex-direction:column; min-height:0; }
+    .video-heading { font-size:21px; font-weight:700; margin:0 0 14px 4px; }
+    .video-frame { flex:1; min-height:350px; background:#152034; border-radius:14px; overflow:hidden; aspect-ratio:16/9; }
+    iframe { display:block; width:100%; height:100%; border:0; }
+    .note { margin:10px 4px 0; color:var(--muted); font-size:14px; line-height:1.55; }
+    .video-actions { display:flex; flex-wrap:wrap; gap:10px; margin:12px 4px 0; align-items:center; }
+    .video-actions a { display:inline-block; background:#e8f1fe; color:#225ba6; text-decoration:none; padding:11px 18px; border-radius:11px; font-weight:700; }
+    .video-actions a:hover { background:#d3e6ff; }
+    .warning { color:#ae5c18; font-weight:700; }
+
+    @media (max-width:900px) {
+      .dashboard { grid-template-columns:1fr; }
+      .tasks { min-height:280px; }
+      .task-list { max-height:240px; }
+      .topbar { gap:10px; }
+      .stat { padding:16px 8px; }
+      .stat-label { font-size:16px; }
+      .stat-number { font-size:clamp(24px,5vw,48px); }
+      .video-frame { min-height:260px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="panel tasks">
+      <h1>📋 今日待辦事項</h1>
+      <p class="subtitle">完成一件，就勾選一件！</p>
+      <div class="task-entry">
+        <input id="taskInput" type="text" maxlength="200" placeholder="輸入待辦事項…" aria-label="輸入待辦事項">
+        <button class="add" id="addBtn" type="button">新增</button>
+      </div>
+      <ul class="task-list" id="taskList"></ul>
+      <button class="clear" id="clearBtn" type="button">清除全部事項</button>
+    </aside>
+
+    <main class="main">
+      <section class="topbar">
+        <div class="panel stat">
+          <div class="stat-label">🕒 現在時間</div>
+          <div class="stat-number" id="clock">--:--:--</div>
+        </div>
+        <div class="panel stat">
+          <div class="stat-label">🍱 距離 12:45 用餐結束</div>
+          <div class="stat-number timer-number" id="countdown">--:--:--</div>
+        </div>
+      </section>
+      <section class="panel video-card">
+        <div class="video-heading">🎬 午餐影片播放區</div>
+        <div class="video-frame">
+          <iframe
+            src="https://www.youtube.com/embed/videoseries?list=PLR9-cXLksRCuT1LEXsK7ZQych-n6wSPsF"
+            title="午餐 YouTube 播放清單"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen></iframe>
+        </div>
+        <div class="video-actions">
+          <a href="https://www.youtube.com/playlist?list=PLR9-cXLksRCuT1LEXsK7ZQych-n6wSPsF" target="_blank" rel="noopener noreferrer">▶ 無法播放？直接在 YouTube 開啟清單</a>
+        </div>
+        <p class="note" id="videoHelp">影片需要網路，請點播放器中的播放鍵。若顯示錯誤 153，請使用「啟動午餐看板.bat」開啟本頁，而不是直接雙擊 HTML。</p>
+      </section>
+    </main>
+  </div>
+  <script>
+    const clock = document.getElementById('clock');
+    const countdown = document.getElementById('countdown');
+    const input = document.getElementById('taskInput');
+    const list = document.getElementById('taskList');
+    const storageKey = 'lunch-board-tasks-v1';
+    let tasks = [];
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      if (Array.isArray(saved)) tasks = saved.filter(item => item && typeof item.text === 'string');
+    } catch (error) { tasks = []; }
+
+    function saveTasks() {
+      try { localStorage.setItem(storageKey, JSON.stringify(tasks)); } catch (error) {}
+    }
+    function renderTasks() {
+      list.replaceChildren();
+      tasks.forEach((task, index) => {
+        const li = document.createElement('li');
+        if (task.done) li.classList.add('completed');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = Boolean(task.done);
+        checkbox.setAttribute('aria-label', '完成 ' + task.text);
+        checkbox.addEventListener('change', () => {
+          tasks[index].done = checkbox.checked;
+          saveTasks(); renderTasks();
+        });
+        const span = document.createElement('span');
+        span.className = 'task-text';
+        span.textContent = task.text;
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'delete';
+        del.textContent = '刪除';
+        del.addEventListener('click', () => {
+          tasks.splice(index, 1);
+          saveTasks(); renderTasks();
+        });
+        li.append(checkbox, span, del);
+        list.appendChild(li);
+      });
+    }
+    function addTask() {
+      const text = input.value.trim();
+      if (!text) { input.focus(); return; }
+      tasks.push({ text, done:false });
+      input.value = '';
+      saveTasks(); renderTasks(); input.focus();
+    }
+    document.getElementById('addBtn').addEventListener('click', addTask);
+    input.addEventListener('keydown', event => { if (event.key === 'Enter') addTask(); });
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (tasks.length === 0 || confirm('確定要清除全部待辦事項嗎？')) {
+        tasks = []; saveTasks(); renderTasks();
+      }
+    });
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function updateTime() {
+      const now = new Date();
+      clock.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      const deadline = new Date(now);
+      deadline.setHours(12, 45, 0, 0);
+      const secondsLeft = Math.max(0, Math.ceil((deadline - now) / 1000));
+      if (secondsLeft === 0) {
+        countdown.textContent = '用餐時間結束！';
+        countdown.classList.add('timer-end');
+      } else {
+        countdown.classList.remove('timer-end');
+        countdown.textContent = `${pad(Math.floor(secondsLeft / 3600))}:${pad(Math.floor(secondsLeft % 3600 / 60))}:${pad(secondsLeft % 60)}`;
+      }
+    }
+    const help = document.getElementById('videoHelp');
+    if (location.protocol === 'file:') {
+      help.innerHTML = '<span class="warning">目前用本機檔案模式開啟（file://），YouTube 可能因缺少來源資訊而出現錯誤 153。</span> 請改用隨附的「啟動午餐看板.bat」開啟；若仍失敗，可按上方按鈕至 YouTube 播放。';
+    }
+    renderTasks(); updateTime(); setInterval(updateTime, 1000);
+  </script>
+</body>
+</html>
